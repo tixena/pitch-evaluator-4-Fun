@@ -7,14 +7,14 @@ import { auth } from "./auth.js";
 const env = validateServerEnv();
 const app = express();
 
-app.all("/api/auth/*", toNodeHandler(auth));
-
 app.use(
   cors({
     origin: env.FRONTEND_URL,
     credentials: true,
   }),
 );
+
+app.all("/api/auth/*", toNodeHandler(auth));
 
 app.use(express.json());
 
