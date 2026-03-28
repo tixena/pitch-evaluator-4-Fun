@@ -33,10 +33,14 @@ export function validateServerEnv(): ServerEnv {
 
   if (!result.success) {
     const errors = result.error.issues
-      .map((issue) => `  • ${issue.path.join(".") || "unknown"}: ${issue.message}`)
+      .map(
+        (issue) => `  • ${issue.path.join(".") || "unknown"}: ${issue.message}`,
+      )
       .join("\n");
 
-    throw new Error(`\n❌ Invalid server environment variables:\n\n${errors}\n`);
+    throw new Error(
+      `\n❌ Invalid server environment variables:\n\n${errors}\n`,
+    );
   }
 
   return result.data;

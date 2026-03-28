@@ -66,4 +66,4 @@ backend-build:
 
 # Run better-auth database migrations
 db-migrate:
-	cd apps/backend && pnpm dlx @better-auth/cli migrate
+	cd apps/backend && pnpm dotenv -e ../../.env -- pnpm dlx @better-auth/cli migrate
