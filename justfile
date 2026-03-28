@@ -28,10 +28,6 @@ dev-web: check
 dev-backend: check
 	pnpm --filter backend dev
 
-# Start web dev server without checks (quick start)
-dev-quick:
-	pnpm dev
-
 # Run all checks then start both backend and web
 dev-all: check
 	pnpm --filter backend --filter web dev
