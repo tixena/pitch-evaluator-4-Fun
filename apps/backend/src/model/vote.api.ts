@@ -155,3 +155,63 @@ voteRouter.post("/", async (req, res) => {
     return res.status(500).json({ message: "Failed to create vote" });
   }
 });
+
+voteRouter.get("/ranking", async (req, res) => {
+    const session = await requireSession(req, res)
+
+    if (!session) {
+        return;
+    }
+
+    const eventId = req.query.eventId;
+
+    if (typeof eventId !== "string" || eventId.length === 0 ) {
+        return res.status(400).json({ message: "eventId is required" })
+    }
+
+    try {
+        const result = await db.query(
+            `
+            SELECT
+                p.id,
+                p."eventId",
+                p.name,
+                p.description,
+                p.color,
+                p.logoUrl,
+                COUNT(v.id):: int AS "votesCount",
+                COALESCE(ROUND(AVG(v.innovation)::numeric, 2), 0) AS "innovationAvg,
+                COALESCE(ROUND(AVG(v.viability)::numeric, 2), 0) AS viabilityAvg,
+                COALESCE(ROUND(AVG(v.impact)::numeric, 2), 0) AS impactAvg,
+                COALESCE(ROUND(AVG(v.presentation)::numeric, 2), 0) AS presentationAcg,
+                COALESCE(
+                  ROUND((
+                    AVG(v.innovation) +
+                    AVG(V.viability) +
+                    AVG(v.impact) +
+                    AVG(v.presentation)
+                  ) / 4, 2),
+                  0
+                ) AS "scoreAvg"
+              FROM pitch p
+              INNER JOIN event e ON e.id = p."eventId"
+              LEFT JOIN vote v ON v."pitchId" = p.Id
+              WHERE p."eventId" = $1
+                AND e."organizerId" = $2
+              GROUP BY 
+                p.id,
+                p."eventId,
+                p.name, p.description,
+                p.color,
+                p."logoUrl",
+                p."createdAt"
+              ORDER BY "scoreAvg" DESC, "votesCount" DESC, p."createdAt" ASC
+              `,
+              [eventId, session.user.id],
+        );
+        return res.json(result.rows);
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({ message: "Failed to fetch ranking"})
+    }
+});

@@ -10,3 +10,18 @@ export type Vote = {
   comment?: string | null;
   createdAt: Date;
 };
+
+
+export type PitchRanking = {
+  id: string;
+  eventId: string;
+  name: string;
+  description: string;
+  color: string;
+  logoUrl:string | null;
+  votesCount: number;
+  innovationAvg: number;
+  viabilityAvg: number;
+  presentationAvg: number;
+  scoreAvg: number;
+}
