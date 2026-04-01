@@ -1,6 +1,6 @@
 export type Vote = {
   id: string;
-  projectId: string;
+  pitchId: string;
   evaluatorId?: string | null;
   ipAddress?: string | null;
   innovation: number;

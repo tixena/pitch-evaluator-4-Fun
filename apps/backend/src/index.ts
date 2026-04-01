@@ -5,6 +5,7 @@ import { validateServerEnv } from "@workspace/shared/env/server";
 import { auth } from "./auth.js";
 import { eventRouter } from "./model/event.api.js";
 import { pitchRouter } from "./model/pitch.api.js";
+import { voteRouter } from "./model/vote.api.js";
 
 const env = validateServerEnv();
 const app = express();
@@ -26,6 +27,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/event", eventRouter);
 app.use("/api/pitch", pitchRouter);
+app.use("/api/vote", voteRouter);
 
 app.listen(env.PORT, () => {
   console.log(`Backend server running on http://localhost:${env.PORT}`);
