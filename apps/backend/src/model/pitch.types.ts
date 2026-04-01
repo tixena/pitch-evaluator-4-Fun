@@ -1,4 +1,4 @@
-export type Project = {
+export type Pitch = {
   id: string;
   eventId: string;
   name: string;

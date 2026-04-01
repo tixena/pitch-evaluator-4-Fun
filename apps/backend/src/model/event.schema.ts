@@ -17,5 +17,15 @@ export const eventSchema = z.object({
   organizerId: z.string().min(1, "Organizer id is required"),
 });
 
-export type Event = z.infer<typeof eventSchema>;
-export type EventStatus = z.infer<typeof eventStatusSchema>;
+export const createEventSchema = z.object({
+  name: z.string()
+    .min(3, "Name must have at least 3 characters")
+    .max(100, "Name cannot exceed 100 characters"),
+  description: z.string()
+    .min(5, "Description must have at least 5 characters")
+    .max(500, "Description cannot exceed 500 characters"),
+})
+
+export const updateEventStatusSchema = z.object({
+  status: eventStatusSchema,
+}); 
