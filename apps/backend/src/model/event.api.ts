@@ -1,25 +1,21 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import {
   createEventSchema,
   updateEventStatusSchema,
 } from "./event.schema.js";
-// import { relative } from "node:path";
 
 export const eventRouter: Router = Router();
 
-// Temporal mientras conectas auth 
-const DEMO_ORGANIZER_ID = "demo-organizer-id";
+eventRouter.get("/", async (req, res) => {
+  const session = await requireSession(req, res);
 
-// const session = await getCurrentSessionFromRequest(req);
-// if (!session) {
-//     return res.status(401).json({ message: "Unauthorized" });
-// }
+  if (!session) {
+    return;
+  }
 
-// const organizerId = session.user.id;
-
-eventRouter.get("/", async (_req, res) => {
   try {
     const result = await db.query(
       `
@@ -28,7 +24,7 @@ eventRouter.get("/", async (_req, res) => {
         WHERE "organizerId" = $1
         ORDER BY "createdAt" DESC
       `,
-      [DEMO_ORGANIZER_ID],
+      [session.user.id],
     );
 
     res.json(result.rows);
@@ -39,6 +35,12 @@ eventRouter.get("/", async (_req, res) => {
 });
 
 eventRouter.post("/", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   const parsed = createEventSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -57,7 +59,7 @@ eventRouter.post("/", async (req, res) => {
         VALUES ($1, $2, $3, $4, NOW(), $5)
         RETURNING id, name, description, status, "createdAt", "organizerId"
       `,
-      [randomUUID(), name, description, "OPEN", DEMO_ORGANIZER_ID],
+      [randomUUID(), name, description, "OPEN", session.user.id],
     );
 
     res.status(201).json(result.rows[0]);
@@ -68,6 +70,12 @@ eventRouter.post("/", async (req, res) => {
 });
 
 eventRouter.patch("/:id/status", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   const parsed = updateEventStatusSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -85,7 +93,7 @@ eventRouter.patch("/:id/status", async (req, res) => {
         WHERE id = $2 AND "organizerId" = $3
         RETURNING id, name, description, status, "createdAt", "organizerId"
       `,
-      [parsed.data.status, req.params.id, DEMO_ORGANIZER_ID],
+      [parsed.data.status, req.params.id, session.user.id],
     );
 
     if (result.rowCount === 0) {
@@ -100,13 +108,19 @@ eventRouter.patch("/:id/status", async (req, res) => {
 });
 
 eventRouter.delete("/:id", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   try {
     const result = await db.query(
       `
         DELETE FROM event
         WHERE id = $1 AND "organizerId" = $2
       `,
-      [req.params.id, DEMO_ORGANIZER_ID],
+      [req.params.id, session.user.id],
     );
 
     if (result.rowCount === 0) {

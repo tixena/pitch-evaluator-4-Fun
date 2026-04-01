@@ -1,14 +1,18 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { createPitchSchema, updatePitchSchema } from "./pitch.schema.js";
 
 export const pitchRouter: Router = Router();
 
-// temporal
-const DEMO_ORGANIZER_ID = "demo-organizer-id";
-
 pitchRouter.get("/", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   const eventId = req.query.eventId;
 
   if (typeof eventId !== "string" || eventId.length === 0) {
@@ -24,7 +28,7 @@ pitchRouter.get("/", async (req, res) => {
         WHERE p."eventId" = $1 AND e."organizerId" = $2
         ORDER BY p."createdAt" DESC
       `,
-      [eventId, DEMO_ORGANIZER_ID],
+      [eventId, session.user.id],
     );
 
     return res.json(result.rows);
@@ -35,6 +39,12 @@ pitchRouter.get("/", async (req, res) => {
 });
 
 pitchRouter.post("/", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   const parsed = createPitchSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -54,7 +64,7 @@ pitchRouter.post("/", async (req, res) => {
         FROM event
         WHERE id = $1 AND "organizerId" = $2
       `,
-      [eventId, DEMO_ORGANIZER_ID],
+      [eventId, session.user.id],
     );
 
     if (eventResult.rowCount === 0) {
@@ -78,6 +88,12 @@ pitchRouter.post("/", async (req, res) => {
 });
 
 pitchRouter.patch("/:id", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   const parsed = updatePitchSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -104,7 +120,7 @@ pitchRouter.patch("/:id", async (req, res) => {
           AND e."organizerId" = $6
         RETURNING p.id, p."eventId", p.name, p.description, p.color, p."logoUrl", p."createdAt"
       `,
-      [name, description, color, logoUrl ?? null, req.params.id, DEMO_ORGANIZER_ID],
+      [name, description, color, logoUrl ?? null, req.params.id, session.user.id],
     );
 
     if (result.rowCount === 0) {
@@ -119,6 +135,12 @@ pitchRouter.patch("/:id", async (req, res) => {
 });
 
 pitchRouter.delete("/:id", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   try {
     const result = await db.query(
       `
@@ -128,7 +150,7 @@ pitchRouter.delete("/:id", async (req, res) => {
           AND e.id = p."eventId"
           AND e."organizerId" = $2
       `,
-      [req.params.id, DEMO_ORGANIZER_ID],
+      [req.params.id, session.user.id],
     );
 
     if (result.rowCount === 0) {

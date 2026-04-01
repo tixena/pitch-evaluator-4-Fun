@@ -1,6 +1,9 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { validateServerEnv } from "@workspace/shared/env/server";
+import type { Request, Response } from "express";
+import { fromNodeHeaders } from "better-auth/node";
+
 
 const env = validateServerEnv();
 
@@ -15,3 +18,23 @@ export const auth = betterAuth({
     enabled: true,
   },
 });
+
+//auth session
+//te dice quien esta haciendo la peticion
+export const getSessionFromRequest = async (req: Request) => {
+  return auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+};
+
+//quien esta logueado
+export const requireSession = async (req: Request, res: Response) => {
+  const session = await getSessionFromRequest(req);
+
+  if (!session) {
+    res.status(401).json({ message: "Unauthorized" });
+    return null;
+  }
+
+  return session;
+};

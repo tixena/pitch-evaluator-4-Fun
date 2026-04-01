@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { voteSchema } from "./vote.schema.js";
 
 export const voteRouter: Router = Router();
-
-const DEMO_ORGANIZER_ID = "demo-organizer-id";
 
 const createVoteSchema = voteSchema.omit({
   id: true,
@@ -26,6 +25,12 @@ const getClientIpAddress = (value: string | string[] | undefined) => {
 };
 
 voteRouter.get("/", async (req, res) => {
+  const session = await requireSession(req, res);
+
+  if (!session) {
+    return;
+  }
+
   const pitchId = req.query.pitchId;
 
   if (typeof pitchId !== "string" || pitchId.length === 0) {
@@ -53,7 +58,7 @@ voteRouter.get("/", async (req, res) => {
           AND e."organizerId" = $2
         ORDER BY v."createdAt" DESC
       `,
-      [pitchId, DEMO_ORGANIZER_ID],
+      [pitchId, session.user.id],
     );
 
     return res.json(result.rows);
