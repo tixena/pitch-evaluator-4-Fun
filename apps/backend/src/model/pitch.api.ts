@@ -163,3 +163,35 @@ pitchRouter.delete("/:id", async (req, res) => {
     return res.status(500).json({ message: "Failed to delete pitch" });
   }
 });
+
+// Endpoint publico para la pantalla de voto
+pitchRouter.get("/public/:pitchId", async (req, res) => {
+  try {
+    const result = await db.query(
+      `
+        SELECT
+          p.id,
+          p.name,
+          p.description,
+          p.color,
+          p."logoUrl",
+          e.status AS "eventStatus"
+        FROM pitch p
+        INNER JOIN event e ON e.id = p."eventId"
+        WHERE p.id = $1
+      `,
+      [req.params.pitchId],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "Pitch not found",
+      });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to get pitch" });
+  }
+});
