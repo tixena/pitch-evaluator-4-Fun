@@ -105,11 +105,31 @@ voteRouter.post("/", async (req, res) => {
         message: "Pitch not found or voting is closed",
       });
     }
-
+    //no doble votos
     const ipAddress =
       getClientIpAddress(req.headers["x-forwarded-for"]) ?? req.ip ?? null;
 
-    const result = await db.query(
+    if(ipAddress) {
+      const existingVoteResult = await db.query(
+        `
+        SELECT id
+        FROM vote
+        WHERE "pitchId" = $1
+          AND "ipAddress" = $2
+        LIMIT 1`,
+        [pitchId, ipAddress]
+      );
+
+      if (existingVoteResult.rowCount !== null && existingVoteResult.rowCount > 0 ) {
+        return res.status(409).json({ message: "You have already voted for this pitch",
+        });
+      }
+    }
+
+    let result;
+
+    try {
+      result = await db.query(
       `
         INSERT INTO vote (
           id,
@@ -148,6 +168,19 @@ voteRouter.post("/", async (req, res) => {
         comment ?? null,
       ],
     );
+  }catch(error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "23505"
+    ){
+      return res.status(409).json({
+        message: "You have already voted for this pitch"
+      })
+    }
+    throw error;
+  }
 
     return res.status(201).json(result.rows[0]);
   } catch (error) {

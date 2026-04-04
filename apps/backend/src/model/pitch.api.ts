@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { createPitchSchema, updatePitchSchema } from "./pitch.schema.js";
+import { validateServerEnv } from "@workspace/shared/env/server";
 
 export const pitchRouter: Router = Router();
 
@@ -195,3 +196,193 @@ pitchRouter.get("/public/:pitchId", async (req, res) => {
     return res.status(500).json({ message: "Failed to get pitch" });
   }
 });
+
+//detalles
+pitchRouter.get("/detail/:pitchId", async (req, res) => {
+  const session = await requireSession(req, res)
+
+  if(!session) {
+    return;
+  }
+
+  try {
+    const result = await db.query(
+      `
+      SELECT 
+        p.id,
+        p."eventId",
+        p.name,
+        p.description,
+        p.color,
+        p."logoUrl",
+        COUNT(v.id)::int AS "votesCount",
+        COALESCE(ROUND(AVG(v.innovation)::numeric, 2), 0) AS "innovationAvg",
+        COALESCE(ROUND(AVG(v.viability)::numeric, 2), 0) AS "viabilityAvg",
+        COALESCE(ROUND(AVG(v.impact)::numeric, 2), 0) AS "impactAvg",
+        COALESCE(ROUND(AVG(v.presentation)::numeric, 2), 0) AS "presentationAvg"
+      FROM pitch p
+      INNER JOIN event e ON e.id = p."eventId"
+      LEFT JOIN vote v ON v."pitchId" = p.id
+      WHERE p.id = $1
+        AND e."organizerId" = $2
+      GROUP BY
+        p.id,
+        p."eventId",
+        p.name,
+        p.description,
+        p.color,
+        p."logoUrl"
+      `,
+      [req.params.pitchId, session.user.id],
+    )
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "pitch not found",
+
+      })
+    }
+
+    res.status(200).json(result.rows[0])
+  }catch(e) {
+    console.log(e)
+    res.status(500).json({ message: "Failed to fetch pitch detail"})
+  }
+});
+
+//comentario
+pitchRouter.get("/comments", async (req, res) => {
+  const session = await requireSession(req, res)
+
+  if(!session) {
+    return;
+  }
+
+  const pitchId = req.query.pitchId
+
+  if (typeof pitchId !== "string" || pitchId.length === 0) {
+    return res.status(400).json({ message: "pitchId is required"})
+  }
+
+  try {
+    const result = await db.query(
+      `SELECT
+        v.id,
+        v.comment,
+        v."createdAt"
+      FROM vote v
+      INNER JOIN pitch p ON p.id = v."pitchId"
+      INNER JOIN event e ON e.id = p."eventId"
+      WHERE v."pitchId" = $1
+        AND e."organizerId" = $2
+        AND v.comment IS NOT null
+        AND TRIM(v.comment) <> ''
+      ORDER BY v."createdAt" DESC
+      `,
+      [pitchId, session.user.id]
+    );
+
+    res.status(200).json(result.rows)
+  } catch (error){
+    console.log(error)
+    res.status(500).json({ message: "Failed to fetch comments"})
+  }
+})
+
+//qr
+const env = validateServerEnv()
+pitchRouter.get("/:pitchId/qr", async (req, res) => {
+  const session = await requireSession(req, res)
+
+  if(!session) {
+    return;
+  }
+
+  try {
+    const result = await db.query(
+      `SELECT
+        p.id,
+        p.name
+      INNER JOIN event e ON e.id = p.eventId
+      WHERE p.id = $1
+        AND e."organizerId" = $2
+        `, [req.params.pitchId, session.user.id]
+    )
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Pitch not found" })
+    }
+
+    const pitch = result.rows[0]
+
+    const publicVoteUrl = `${env.FRONTEND_URL}/vote/${pitch.id}`;
+
+    return res.json({
+      id: pitch.id,
+      name: pitch.name,
+      publicVoteUrl
+    })
+  } catch(error) {
+    console.log(error)
+    return res.status(500).json({ mesage: "Failed to generate pitch access URL" })
+  }
+})
+
+//endpoint resumen de ia
+pitchRouter.post("/:pitchId/summary", async (req, res) => {
+  const session = await requireSession(req, res)
+
+  if (!session) {
+    return;
+  }
+
+  try {
+    const pitchResult = await db.query(
+      `
+      SELECT
+        p.id,
+        p.name
+      FROM pitch p
+      INNER join event e ON e.id = p."eventId"
+      WHERE p.id = $1
+        AND e."organizerId" = $2
+        `,
+        [req.params.pitchId, session.user.id],
+    )
+
+    if (pitchResult.rowCount === 0) {
+      return res.status(404).json({ message: "Pitch not found" })
+    }
+    
+    const commentsResult = await db.query(
+      `
+      SELECT
+        v.id,
+        v.comments,
+        v."createdAt"
+      FROM vote v
+      WHERE v."pitchId" = $1
+        AND v.comments IS NOT null
+        AND TRIM(v.comments) <> ''
+      ORDER by v."createdAt" DESC
+      `,
+      [req.params.pitchId],
+    )
+
+    const pitch = pitchResult.rows[0]
+    const comments = commentsResult.rows;
+
+    res.json({ 
+      pitchId: pitch.id,
+      pitchName: pitch.name,
+      commentsCount: comments.length,
+      comments,
+      summary: null,
+      status: "PENDING_AI",
+      message: "Comments collected successfully. AI summary not implemented yet"
+    })
+  }catch(error) {
+    console.error(error)
+    return res.status(500).json({ message: "Failed to prepare pitch summary"})
+  }
+})
