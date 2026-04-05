@@ -4,6 +4,7 @@ import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { createPitchSchema, updatePitchSchema } from "./pitch.schema.js";
 import { validateServerEnv } from "@workspace/shared/env/server";
+import { presentPitch, presentPitchComment, presentPitchQr, presentPitchDetail,presentPitchSummary, presentPublicPitch } from "../presenter/pitch.presenter.js";
 
 export const pitchRouter: Router = Router();
 
@@ -32,7 +33,7 @@ pitchRouter.get("/", async (req, res) => {
       [eventId, session.user.id],
     );
 
-    return res.json(result.rows);
+    return res.json(result.rows.map(presentPitch));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to fetch pitches" });
@@ -81,7 +82,7 @@ pitchRouter.post("/", async (req, res) => {
       [randomUUID(), eventId, name, description, color, logoUrl ?? null],
     );
 
-    return res.status(201).json(result.rows[0]);
+    return res.status(201).json(presentPitch(result.rows[0]));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to create pitch" });
@@ -128,7 +129,7 @@ pitchRouter.patch("/:id", async (req, res) => {
       return res.status(404).json({ message: "Pitch not found" });
     }
 
-    return res.json(result.rows[0]);
+    return res.json(presentPitch(result.rows[0]));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to update pitch" });
@@ -190,7 +191,7 @@ pitchRouter.get("/public/:pitchId", async (req, res) => {
       });
     }
 
-    return res.status(200).json(result.rows[0]);
+    return res.status(200).json(presentPublicPitch(result.rows[0]));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to get pitch" });
@@ -238,15 +239,15 @@ pitchRouter.get("/detail/:pitchId", async (req, res) => {
 
     if (result.rowCount === 0) {
       return res.status(404).json({
-        message: "pitch not found",
+        message: "Pitch not found",
 
       })
     }
 
-    res.status(200).json(result.rows[0])
+    return res.status(200).json(presentPitchDetail(result.rows[0]))
   }catch(e) {
-    console.log(e)
-    res.status(500).json({ message: "Failed to fetch pitch detail"})
+    console.error(e)
+    return res.status(500).json({ message: "Failed to fetch pitch detail"})
   }
 });
 
@@ -282,7 +283,7 @@ pitchRouter.get("/comments", async (req, res) => {
       [pitchId, session.user.id]
     );
 
-    res.status(200).json(result.rows)
+    res.status(200).json(result.rows.map(presentPitchComment))
   } catch (error){
     console.log(error)
     res.status(500).json({ message: "Failed to fetch comments"})
@@ -318,11 +319,13 @@ pitchRouter.get("/:pitchId/qr", async (req, res) => {
 
     const publicVoteUrl = `${env.FRONTEND_URL}/vote/${pitch.id}`;
 
-    return res.json({
-      id: pitch.id,
-      name: pitch.name,
-      publicVoteUrl
-    })
+    return res.json(
+      presentPitchQr({
+        id: pitch.id,
+        name: pitch.name,
+        publicVoteUrl
+      })
+    )
   } catch(error) {
     console.error(error)
     return res.status(500).json({ message: "Failed to generate pitch access URL" })
@@ -359,7 +362,7 @@ pitchRouter.post("/:pitchId/summary", async (req, res) => {
       `
       SELECT
         v.id,
-        v.comments,
+        v.comment,
         v."createdAt"
       FROM vote v
       WHERE v."pitchId" = $1
@@ -373,15 +376,17 @@ pitchRouter.post("/:pitchId/summary", async (req, res) => {
     const pitch = pitchResult.rows[0]
     const comments = commentsResult.rows;
 
-    res.json({ 
-      pitchId: pitch.id,
-      pitchName: pitch.name,
-      commentsCount: comments.length,
-      comments,
-      summary: null,
-      status: "PENDING_AI",
-      message: "Comments collected successfully. AI summary not implemented yet"
-    })
+    res.json(
+      presentPitchSummary({ 
+        pitchId: pitch.id,
+        pitchName: pitch.name,
+        commentsCount: comments.length,
+        comments,
+        summary: null,
+        status: "PENDING_AI",
+        message: "Comments collected successfully. AI summary not implemented yet"
+      })
+    )
   }catch(error) {
     console.error(error)
     return res.status(500).json({ message: "Failed to prepare pitch summary"})
@@ -461,8 +466,8 @@ pitchRouter.get("/:pitchId/export", async (req, res) => {
 
     const csvRows = [
       pitch.id,
-      `{"String(pitch.name).replace(/"/g, '""')}"`,
-      `{String(pitch.descarga).replace(/"/g, '""')}"`,
+      `{String(pitch.name).replace(/"/g, '""')}"`,
+      `{String(pitch.description).replace(/"/g, '""')}"`,
       pitch.color,
       pitch.logoUrl ?? "",
       pitch.votesCount,

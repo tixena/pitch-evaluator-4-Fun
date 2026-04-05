@@ -31,7 +31,7 @@ export type PitchDetail = {
   presentationAvg: number;
 };
 
-export type PitchComent = {
+export type PitchComment = {
   id: string;
   comment: string;
   createdAt: Date;
@@ -41,7 +41,7 @@ export type PitchSummaryPayload = {
   pitchId: string;
   pitchName: string;
   commentsCount: number;
-  commets: PitchComent[];
+  commets: PitchComment[];
   summary: string | null;
   status: "PENDING_AI" |"READY"|"FAILED";
   message: string;
@@ -59,7 +59,7 @@ export type PitchExportRow = {
   description: string;
   color: string;
   logoUrl: string | null;
-  cotesCount: number;
+  votesCount: number;
   innovationAvg: number;
   viabilityAvg: number;
   impactAvg: number;

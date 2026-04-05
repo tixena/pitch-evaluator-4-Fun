@@ -6,6 +6,7 @@ import {
   createEventSchema,
   updateEventStatusSchema,
 } from "./event.schema.js";
+import { presentEvent } from "../presenter/event.presenter.js";
 
 export const eventRouter: Router = Router();
 
@@ -27,7 +28,7 @@ eventRouter.get("/", async (req, res) => {
       [session.user.id],
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map(presentEvent));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to fetch events" });
@@ -62,7 +63,7 @@ eventRouter.post("/", async (req, res) => {
       [randomUUID(), name, description, "OPEN", session.user.id],
     );
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(presentEvent(result.rows[0]));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to create event" });
@@ -100,7 +101,7 @@ eventRouter.patch("/:id/status", async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    res.json(result.rows[0]);
+    res.json(presentEvent(result.rows[0]));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to update event status" });
@@ -160,8 +161,8 @@ eventRouter.get("/:eventId/export", async (req, res) => {
     const result = await db.query(
       `
       SELECT
-        p.id = pitchId,
-        p.name = pitchName,
+        p.id AS pitchId,
+        p.name AS pitchName,
         COUNT(v.id)::int AS "cotesCount",
         COALESCE(ROUND(AVG(v.innovation)::numeric, 2), 0) AS "innovationAvg",
         COALESCE(ROUND(AVG(v.viability)::numeric, 2), 0) AS "viabilityAvg",
@@ -223,7 +224,7 @@ eventRouter.get("/:eventId/export", async (req, res) => {
       .replace(/[^a-z0-9-_]/g, "");
 
       //forzar descarga
-    res.setHeader("Content-Type", "text/csv: charset=utf-8");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
       `attachment: filename="${eventName || "event"}-results.csv"`,

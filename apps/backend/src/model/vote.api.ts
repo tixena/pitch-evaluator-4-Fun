@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { voteSchema } from "./vote.schema.js";
+import { presentPitchRanking, presentVote } from "../presenter/vote.presenter.js";
 
 export const voteRouter: Router = Router();
 
@@ -61,7 +62,7 @@ voteRouter.get("/", async (req, res) => {
       [pitchId, session.user.id],
     );
 
-    return res.json(result.rows);
+    return res.json(result.rows.map(presentVote));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to fetch votes" });
@@ -182,7 +183,7 @@ voteRouter.post("/", async (req, res) => {
     throw error;
   }
 
-    return res.status(201).json(result.rows[0]);
+    return res.status(201).json(presentVote(result.rows[0]));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to create vote" });
@@ -244,9 +245,9 @@ voteRouter.get("/ranking", async (req, res) => {
       `,
       [eventId, session.user.id],
       );
-      return res.json(result.rows);
+      return res.json(result.rows.map(presentPitchRanking));
     } catch (error) {
-      console.log(error)
+      console.error(error)
       return res.status(500).json({ message: "Failed to fetch ranking"})
     }
 });
