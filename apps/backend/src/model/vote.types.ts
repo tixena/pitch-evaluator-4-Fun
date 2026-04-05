@@ -22,7 +22,7 @@ export type PitchRanking = {
   votesCount: number;
   innovationAvg: number;
   viabilityAvg: number;
-  impactAVG: number;
+  impactAvg: number;
   presentationAvg: number;
   scoreAvg: number;
 }

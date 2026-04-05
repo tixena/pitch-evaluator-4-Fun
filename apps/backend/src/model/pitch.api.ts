@@ -303,7 +303,8 @@ pitchRouter.get("/:pitchId/qr", async (req, res) => {
       `SELECT
         p.id,
         p.name
-      INNER JOIN event e ON e.id = p.eventId
+      FROM pitch p
+      INNER JOIN event e ON e.id = p."eventId"
       WHERE p.id = $1
         AND e."organizerId" = $2
         `, [req.params.pitchId, session.user.id]
@@ -323,8 +324,8 @@ pitchRouter.get("/:pitchId/qr", async (req, res) => {
       publicVoteUrl
     })
   } catch(error) {
-    console.log(error)
-    return res.status(500).json({ mesage: "Failed to generate pitch access URL" })
+    console.error(error)
+    return res.status(500).json({ message: "Failed to generate pitch access URL" })
   }
 })
 
@@ -384,5 +385,111 @@ pitchRouter.post("/:pitchId/summary", async (req, res) => {
   }catch(error) {
     console.error(error)
     return res.status(500).json({ message: "Failed to prepare pitch summary"})
+  }
+})
+
+//export por pitch
+pitchRouter.get("/:pitchId/export", async (req, res) => {
+  const session = await requireSession(req, res)
+
+  if (!session){
+    return;
+  }
+
+  try {
+    const detailResult = await db.query(
+      `
+        SELECT
+          p.id,
+          p.name,
+          p.description,
+          p.color,
+          p."logoUrl",
+          COUNT(v.id)::int AS "votesCount",
+          COALESCE(ROUND(AVG(v.innovation)::numeric, 2), 0) AS "innovationAvg",
+          COALESCE(ROUND(AVG(v.viability)::numeric, 2), 0) AS "viabilityAvg",
+          COALESCE(ROUND(AVG(v.impact)::numeric, 2), 0) AS "impactAvg",
+          COALESCE(ROUND(AVG(v.presentation)::numeric, 2), 0) AS "presentationAvg",
+          COALESCE(
+            ROUND((
+              AVG(v.innovation) +
+              AVG(v.viability) +
+              AVG(v.impact) +
+              AVG(v.presentation)
+            ) / 4, 2),
+            0
+          ) AS "scoreAvg"
+        FROM pitch p
+        INNER JOIN event e ON e.id = p."eventId"
+        LEFT JOIN vote v ON v."pitchId" = p.id
+        WHERE p.id = $1
+          AND e."organizerId" = $2
+        GROUP BY
+          p.id,
+          p.name,
+          p.description,
+          p.color,
+          p."logoUrl"
+      `,
+    [req.params.pitchId, session.user.id]
+    )
+
+    if (detailResult.rowCount === 0) {
+      return res.status(404).json({ message: "Pitch not found"})
+    }
+
+    const pitch = detailResult.rows[0];
+
+    const aiSummary =
+      "AI summary not generated yet. This field will contain the executive summary based on audience comments.";
+
+
+    const csvHeader = [
+      "pitchId",
+      "pitchName",
+      "description",
+      "color",
+      "logoUrl",
+      "votesCount",
+      "innovationAvg",
+      "viabilityAvg",
+      "impactAvg",
+      "presentationAvg",
+      "scoreAvg",
+      "aiSummary",
+    ].join(",")
+
+    const csvRows = [
+      pitch.id,
+      `{"String(pitch.name).replace(/"/g, '""')}"`,
+      `{String(pitch.descarga).replace(/"/g, '""')}"`,
+      pitch.color,
+      pitch.logoUrl ?? "",
+      pitch.votesCount,
+      pitch.innovationAvg,
+      pitch.viabilityAvg,
+      pitch.impactAvg,
+      pitch.presentationAvg,
+      pitch.scoreAvg,
+      `"${aiSummary.replace(/"/g, '""')}"`,
+    ].join(",")
+
+    const csv = [csvHeader, csvRows].join("\n")
+
+    const pitchName = String(pitch.name)
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-_]/g, "")
+    
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${pitchName || "pitch"}-report.csv"`,
+    );
+
+    return res.status(200).send(csv)
+  }catch(error){
+    console.error(error)
+    return res.status(500).json({ message: "Failed to export pitch report"})
   }
 })

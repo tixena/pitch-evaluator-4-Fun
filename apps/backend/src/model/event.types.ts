@@ -8,3 +8,14 @@ export type Event = {
     createdAt: Date,
     organizerId: string
 }
+
+export type EventExportRow = {
+  pitchId: string;
+  pitchName: string;
+  votesCount: number;
+  innovationAvg: number;
+  viabilityAvg: number;
+  impactAvg: number;
+  presentationAvg: number;
+  scoreAvg: number;
+}

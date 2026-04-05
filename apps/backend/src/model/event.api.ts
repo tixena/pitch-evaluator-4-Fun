@@ -133,3 +133,105 @@ eventRouter.delete("/:id", async (req, res) => {
     res.status(500).json({ message: "Failed to delete event" });
   }
 });
+
+//export total result
+eventRouter.get("/:eventId/export", async (req, res) => {
+  const session = await requireSession(req, res)
+
+  if(!session) {
+    return;
+  }
+
+  try {
+    const eventResult = await db.query(
+      `
+      SELECT id, name
+      FROM event
+      WHERE id = $1
+        AND "organizerId" = $2
+      `, 
+      [req.params.eventId, session.user.id],
+    )
+
+    if (eventResult.rowCount === 0) {
+      return res.status(404).json({ message: "Event not found"})
+    }
+
+    const result = await db.query(
+      `
+      SELECT
+        p.id = pitchId,
+        p.name = pitchName,
+        COUNT(v.id)::int AS "cotesCount",
+        COALESCE(ROUND(AVG(v.innovation)::numeric, 2), 0) AS "innovationAvg",
+        COALESCE(ROUND(AVG(v.viability)::numeric, 2), 0) AS "viabilityAvg",
+        COALESCE(ROUND(AVG(v.impact)::numeric, 2),0) AS "impactAvg",
+        COALESCE(ROUND(AVG(v.presentation)::numeric, 2),0) AS "presentationAvg",
+        COALESCE(
+          ROUND((
+            AVG(v.innovation) +
+            AVG(v.viability) +
+            AVG(v.impact) +
+            AVG(v.presentation)
+          ) / 4, 2),
+           0
+        ) AS "scoreAvg"
+        FROM pitch p
+        INNER JOIN event e ON e.id = p."eventId"
+        LEFT JOIN vote v ON v."pitchId" = p.id
+        WHERE p."eventId" = $1
+          AND e."organizerId" = $2
+        GROUP by p.id, p.name, p."createdAt"
+        ORDER by "scoreAvg" DESC, "votesCount" DESC, p."createdAt" ASC
+        `,
+        [req.params.eventId, session.user.id],
+    )
+
+    //crea encabezado del csv
+    const csvHeader = [
+      "pitchId",
+      "pitchName",
+      "votesCount",
+      "innovationAvg",
+      "viabilityAvg",
+      "impactAvg",
+      "presentationAvg",
+      "scoreAvg",
+    ].join(",");
+
+    //crea filas de csv
+    const csvRows = result.rows.map((row) =>
+      [
+        row.pitchId,
+        `"${String(row.pitchName).replace(/"/g, '""')}"`,
+        row.votesCount,
+        row.innovationAvg,
+        row.viabilityAvg,
+        row.impactAvg,
+        row.presentationAvg,
+        row.scoreAvg,
+      ].join(","),
+    );
+
+    //unir todo
+    const csv = [csvHeader, ...csvRows].join("\n");
+
+    //crear el nombre del archivo
+    const eventName = String(eventResult.rows[0].name)
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-_]/g, "");
+
+      //forzar descarga
+    res.setHeader("Content-Type", "text/csv: charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment: filename="${eventName || "event"}-results.csv"`,
+    );
+
+    return res.status(200).send(csv);
+  }catch(error) {
+    console.error(error)
+    return res.status(500).json({ message: "Failed to export event results"})
+  }
+})
