@@ -47,7 +47,7 @@ pitchRouter.post("/", async (req, res) => {
     return;
   }
 
-  const parsed = createPitchSchema.safeParse(req.body);
+  const parsed = createPitchSchema.safeParse(req.body);//zod
 
   if (!parsed.success) {
     return res.status(400).json({
@@ -317,7 +317,7 @@ pitchRouter.get("/:pitchId/qr", async (req, res) => {
 
     const pitch = result.rows[0]
 
-    const publicVoteUrl = `${env.FRONTEND_URL}/vote/${pitch.id}`;
+    const publicVoteUrl = `${env.FRONTEND_URL}/vote/${pitch.id}`;//se convierte en endpoint público
 
     return res.json(
       presentPitchQr({
@@ -486,10 +486,10 @@ pitchRouter.get("/:pitchId/export", async (req, res) => {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-_]/g, "")
     
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");//te enviare un csv
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${pitchName || "pitch"}-report.csv"`,
+      `attachment; filename="${pitchName || "pitch"}-report.csv"`,//muestralo en un archivo
     );
 
     return res.status(200).send(csv)

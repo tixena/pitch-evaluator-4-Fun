@@ -1,4 +1,4 @@
-"use client";
+"use client";//se ejecuta en el navegador
 
 import { useQuery } from "@tanstack/react-query";
 import {

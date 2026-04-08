@@ -5,7 +5,7 @@ import {
   ArrowUpRight,
   CircleDot,
   QrCode,
-  Share2,
+  // Share2,
   Sparkles,
   Trophy,
 } from "lucide-react";
@@ -15,60 +15,60 @@ import { useEvents, usePitches, useRanking, usePitchQr } from "@/hooks/dashboard
 //helper
 import { exportEvent, exportPitch } from "@/lib/dashboard-api";
 
-const stats = [
-  { label: "Pitches activos", value: "12", accent: "text-white" },
-  { label: "Votos recibidos", value: "347", accent: "text-lime-300" },
-  { label: "Puntuacion media", value: "4.2", accent: "text-cyan-400" },
-  { label: "Evaluadores", value: "89", accent: "text-fuchsia-400" },
-] as const;
+// const stats = [
+//   { label: "Pitches activos", value: "12", accent: "text-white" },
+//   { label: "Votos recibidos", value: "347", accent: "text-lime-300" },
+//   { label: "Puntuacion media", value: "4.2", accent: "text-cyan-400" },
+//   { label: "Evaluadores", value: "89", accent: "text-fuchsia-400" },
+// ] as const;
 
-const ranking = [
-  {
-    position: "01",
-    name: "EcoTrack AI",
-    innovation: "4.8",
-    viability: "4.5",
-    impact: "4.9",
-    presentation: "4.8",
-    total: "4.70",
-  },
-  {
-    position: "02",
-    name: "FieldLynx",
-    innovation: "4.3",
-    viability: "4.6",
-    impact: "4.2",
-    presentation: "4.4",
-    total: "4.36",
-  },
-  {
-    position: "03",
-    name: "MediConnect",
-    innovation: "4.1",
-    viability: "4.0",
-    impact: "4.5",
-    presentation: "3.9",
-    total: "4.13",
-  },
-  {
-    position: "04",
-    name: "AgriVolt",
-    innovation: "3.8",
-    viability: "4.2",
-    impact: "3.7",
-    presentation: "4.1",
-    total: "3.95",
-  },
-  {
-    position: "05",
-    name: "SafeRoute",
-    innovation: "3.6",
-    viability: "3.9",
-    impact: "4.0",
-    presentation: "3.8",
-    total: "3.78",
-  },
-] as const;
+// const ranking = [
+//   {
+//     position: "01",
+//     name: "EcoTrack AI",
+//     innovation: "4.8",
+//     viability: "4.5",
+//     impact: "4.9",
+//     presentation: "4.8",
+//     total: "4.70",
+//   },
+//   {
+//     position: "02",
+//     name: "FieldLynx",
+//     innovation: "4.3",
+//     viability: "4.6",
+//     impact: "4.2",
+//     presentation: "4.4",
+//     total: "4.36",
+//   },
+//   {
+//     position: "03",
+//     name: "MediConnect",
+//     innovation: "4.1",
+//     viability: "4.0",
+//     impact: "4.5",
+//     presentation: "3.9",
+//     total: "4.13",
+//   },
+//   {
+//     position: "04",
+//     name: "AgriVolt",
+//     innovation: "3.8",
+//     viability: "4.2",
+//     impact: "3.7",
+//     presentation: "4.1",
+//     total: "3.95",
+//   },
+//   {
+//     position: "05",
+//     name: "SafeRoute",
+//     innovation: "3.6",
+//     viability: "3.9",
+//     impact: "4.0",
+//     presentation: "3.8",
+//     total: "3.78",
+//   },
+// ] as const;
 
 const summaryBlocks = [
   {
@@ -115,9 +115,9 @@ export default function DashboardPage() {
 
   //query
   const {data: events = [] } = useEvents();
-  const selectedEventId = events[0]?.id;
+  const selectedEventId = events[0]?.id;//selecciona el primer evento automaticamente
 
-  const {data: pitches = [] } = usePitches(selectedEventId);
+  const {data: pitches = [] } = usePitches(selectedEventId);//trae pitches del eventos
   const selectedPitchId = pitches[0]?.id;
 
   const { data: rankingData = [] } = useRanking(selectedEventId);
@@ -126,13 +126,13 @@ export default function DashboardPage() {
   async function handlerExportEvent() {
     if(!selectedEventId) return;
 
-    const blob = await exportEvent(selectedEventId);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "event-results.csv";
-    link.click();
-    URL.revokeObjectURL(url)
+    const blob = await exportEvent(selectedEventId);//pide el archivo
+    const url = URL.createObjectURL(blob);//convierte el archivo en una url
+    const link = document.createElement("a");//crear el link
+    link.href = url;//apunta al archivo
+    link.download = "event-results.csv";//nombre del archivo
+    link.click();//simula un click, se descarga
+    URL.revokeObjectURL(url)//limpiar memoria
   }
 
   async function handlerExportPitch() {
@@ -147,6 +147,7 @@ export default function DashboardPage() {
     URL.revokeObjectURL(url)
   }
 
+  //arreglo de objetos, representa una tarjeta de estadística en pantalla
   const stats = [
     {
       label: "Pitches activos",
@@ -157,7 +158,7 @@ export default function DashboardPage() {
       label: "Votos recibidos",
       value: String(
         rankingData.reduce(
-          (sum: number, item: { votesCount: number }) => sum + item.votesCount,
+          (sum: number, item: { votesCount: number }) => sum + item.votesCount,//suma todos los votos
           0,
         ),
       ),
@@ -172,13 +173,13 @@ export default function DashboardPage() {
                 (sum: number, item: { scoreAvg: number }) => sum + item.scoreAvg,
                 0,
               ) / rankingData.length
-            ).toFixed(1)
+            ).toFixed(1)//deja un decimal
           : "0.0",
       accent: "text-cyan-400",
     },
     {
       label: "Evaluadores",
-      value: "N/D",
+      value: "N/D",//no disponible
       accent: "text-fuchsia-400",
     },
   ];
@@ -225,16 +226,17 @@ export default function DashboardPage() {
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="flex min-w-0 flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map((stat) => (
+              {/*recorre cada elemento de cada arreglo */}
+              {stats.map((stat) => ( 
                 <article
                   key={stat.label}
                   className="rounded-xl border border-[#2a2a3a] bg-[#1a1a25] px-4 py-4"
                 >
                   <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#6f7088]">
-                    {stat.label}
+                    {stat.label} {/*mostrar nombre*/}
                   </p>
                   <p className={`mt-3 text-3xl font-semibold tracking-tight ${stat.accent}`}>
-                    {stat.value}
+                    {stat.value}{/*mostrar valor*/}
                   </p>
                 </article>
               ))}
@@ -275,26 +277,26 @@ export default function DashboardPage() {
                         className="border-b border-[#20202d] text-sm text-[#d7d8e5] last:border-b-0"
                       >
                         <td className="px-4 py-4 font-mono text-xs text-[#8c8da4]">
-                          {String(index + 1).padStart(2, "0")}
+                          {String(index + 1).padStart(2, "0")} {/*muestra el numero de posicion */}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
                             <span
                               className={`h-2 w-2 rounded-full ${
-                                index === 0 ? "bg-[#ccff00]" : "bg-[#53546a]"
-                              }`}
+                                index === 0 ? "bg-[#ccff00]" : "bg-[#53546a]"//resaltar ganador
+                              }`} 
                             />
                             <span className={index === 0 ? "font-semibold text-[#f8ffcf]" : ""}>
-                              {item.name}
+                              {item.name} {/*nombre del proyecto */}
                             </span>
                           </div>
-                        </td>
+                        </td>{/*muestra las puntuaciones en cada categoria */}
                         <td className="px-4 py-4 text-[#9da0bc]">{item.innovationAvg}</td>
                         <td className="px-4 py-4 text-[#9da0bc]">{item.viabilityAvg}</td>
                         <td className="px-4 py-4 text-[#9da0bc]">{item.impactAvg}</td>
                         <td className="px-4 py-4 text-[#9da0bc]">{item.presentationAvg}</td>
                         <td className="px-4 py-4 text-right font-semibold text-[#ccff00]">
-                          {item.scoreAvg}
+                          {item.scoreAvg} {/*puntaje final */}
                         </td>
                       </tr>
                     ))}
@@ -330,9 +332,10 @@ export default function DashboardPage() {
                     <p className="text-2xl font-semibold text-[#ccff00]">29</p>
                     <p className="text-xs text-[#97a093]">votos recibidos</p>
                   </div>
+                  {/*boton descarga los datos del pitch */}
                   <Button className="bg-[#ccff00] text-black hover:bg-[#e0ff66]"
                     onClick={handlerExportPitch}
-                    disabled={!selectedPitchId}
+                    disabled={!selectedPitchId}//si desactiva si no hay pitch seleccionado
                   >
                     Export pitch
                   </Button>
