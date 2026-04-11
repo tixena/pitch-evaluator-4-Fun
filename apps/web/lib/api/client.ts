@@ -1,9 +1,11 @@
 //helper base para fetch
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+import { validateClientEnv } from "@workspace/shared/env/client";
+
+const { NEXT_PUBLIC_API_URL } = validateClientEnv();
 
 export async function apiFetch<T>(path: string, init?:RequestInit): Promise<T> {
-    const res = await fetch(`${BACKEND_URL}${path}`, {
+    const res = await fetch(`${NEXT_PUBLIC_API_URL}${path}`, {
         ...init,
         credentials: "include",//hace que se envien cookies
         headers: {
@@ -21,7 +23,7 @@ export async function apiFetch<T>(path: string, init?:RequestInit): Promise<T> {
 }
 
 export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
-    const res = await fetch(`${BACKEND_URL}${path}`, {
+    const res = await fetch(`${NEXT_PUBLIC_API_URL}${path}`, {
         ...init,
         credentials: "include",
     })

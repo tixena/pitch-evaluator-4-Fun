@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { voteSchema } from "./vote.schema.js";
 import { presentPitchRanking, presentVote } from "../presenter/vote.presenter.js";
+import { dashboardRankingItemSchema } from "@workspace/shared/api";
 
 export const voteRouter: Router = Router();
 
@@ -245,7 +247,7 @@ voteRouter.get("/ranking", async (req, res) => {
       `,
       [eventId, session.user.id],
       );
-      return res.json(result.rows.map(presentPitchRanking));
+      return res.json(z.array(dashboardRankingItemSchema).parse(result.rows.map(presentPitchRanking)));
     } catch (error) {
       console.error(error)
       return res.status(500).json({ message: "Failed to fetch ranking"})

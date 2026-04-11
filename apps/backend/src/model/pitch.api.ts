@@ -1,10 +1,17 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { requireSession } from "../auth.js";
 import { db } from "../db.js";
 import { createPitchSchema, updatePitchSchema } from "./pitch.schema.js";
 import { validateServerEnv } from "@workspace/shared/env/server";
 import { presentPitch, presentPitchComment, presentPitchQr, presentPitchDetail,presentPitchSummary, presentPublicPitch } from "../presenter/pitch.presenter.js";
+import {
+  dashboardPitchSchema,
+  dashboardPitchDetailSchema,
+  dashboardPitchCommentSchema,
+  dashboardPitchQrSchema,
+} from "@workspace/shared/api";
 
 export const pitchRouter: Router = Router();
 
@@ -33,7 +40,7 @@ pitchRouter.get("/", async (req, res) => {
       [eventId, session.user.id],
     );
 
-    return res.json(result.rows.map(presentPitch));
+    return res.json(z.array(dashboardPitchSchema).parse(result.rows.map(presentPitch)));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to fetch pitches" });
@@ -82,7 +89,7 @@ pitchRouter.post("/", async (req, res) => {
       [randomUUID(), eventId, name, description, color, logoUrl ?? null],
     );
 
-    return res.status(201).json(presentPitch(result.rows[0]));
+    return res.status(201).json(dashboardPitchSchema.parse(presentPitch(result.rows[0])));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to create pitch" });
@@ -129,7 +136,7 @@ pitchRouter.patch("/:id", async (req, res) => {
       return res.status(404).json({ message: "Pitch not found" });
     }
 
-    return res.json(presentPitch(result.rows[0]));
+    return res.json(dashboardPitchSchema.parse(presentPitch(result.rows[0])));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to update pitch" });
@@ -244,7 +251,7 @@ pitchRouter.get("/detail/:pitchId", async (req, res) => {
       })
     }
 
-    return res.status(200).json(presentPitchDetail(result.rows[0]))
+    return res.status(200).json(dashboardPitchDetailSchema.parse(presentPitchDetail(result.rows[0])))
   }catch(e) {
     console.error(e)
     return res.status(500).json({ message: "Failed to fetch pitch detail"})
@@ -283,7 +290,7 @@ pitchRouter.get("/comments", async (req, res) => {
       [pitchId, session.user.id]
     );
 
-    res.status(200).json(result.rows.map(presentPitchComment))
+    res.status(200).json(z.array(dashboardPitchCommentSchema).parse(result.rows.map(presentPitchComment)))
   } catch (error){
     console.log(error)
     res.status(500).json({ message: "Failed to fetch comments"})
@@ -320,11 +327,11 @@ pitchRouter.get("/:pitchId/qr", async (req, res) => {
     const publicVoteUrl = `${env.FRONTEND_URL}/vote/${pitch.id}`;//se convierte en endpoint público
 
     return res.json(
-      presentPitchQr({
+      dashboardPitchQrSchema.parse(presentPitchQr({
         id: pitch.id,
         name: pitch.name,
         publicVoteUrl
-      })
+      }))
     )
   } catch(error) {
     console.error(error)

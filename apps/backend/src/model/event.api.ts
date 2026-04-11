@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { requireSession } from "../auth.js";
 import { db } from "../db.js";
-import {
-  createEventSchema,
-  updateEventStatusSchema,
-} from "./event.schema.js";
+import { createEventSchema, updateEventStatusSchema } from "./event.schema.js";
 import { presentEvent } from "../presenter/event.presenter.js";
+import { dashboardEventSchema } from "@workspace/shared/api";
 
 export const eventRouter: Router = Router();
 
@@ -28,7 +27,9 @@ eventRouter.get("/", async (req, res) => {
       [session.user.id],
     );
 
-    res.json(result.rows.map(presentEvent));
+    res.json(
+      z.array(dashboardEventSchema).parse(result.rows.map(presentEvent)),
+    );
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to fetch events" });
@@ -63,7 +64,7 @@ eventRouter.post("/", async (req, res) => {
       [randomUUID(), name, description, "OPEN", session.user.id],
     );
 
-    res.status(201).json(presentEvent(result.rows[0]));
+    res.status(201).json(dashboardEventSchema.parse(presentEvent(result.rows[0])));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to create event" });
@@ -101,7 +102,7 @@ eventRouter.patch("/:id/status", async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    res.json(presentEvent(result.rows[0]));
+    res.json(dashboardEventSchema.parse(presentEvent(result.rows[0])));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to update event status" });
@@ -137,9 +138,9 @@ eventRouter.delete("/:id", async (req, res) => {
 
 //export total result
 eventRouter.get("/:eventId/export", async (req, res) => {
-  const session = await requireSession(req, res)
+  const session = await requireSession(req, res);
 
-  if(!session) {
+  if (!session) {
     return;
   }
 
@@ -150,12 +151,12 @@ eventRouter.get("/:eventId/export", async (req, res) => {
       FROM event
       WHERE id = $1
         AND "organizerId" = $2
-      `, 
+      `,
       [req.params.eventId, session.user.id],
-    )
+    );
 
     if (eventResult.rowCount === 0) {
-      return res.status(404).json({ message: "Event not found"})
+      return res.status(404).json({ message: "Event not found" });
     }
 
     const result = await db.query(
@@ -185,8 +186,8 @@ eventRouter.get("/:eventId/export", async (req, res) => {
         GROUP by p.id, p.name, p."createdAt"
         ORDER by "scoreAvg" DESC, "votesCount" DESC, p."createdAt" ASC
         `,
-        [req.params.eventId, session.user.id],
-    )
+      [req.params.eventId, session.user.id],
+    );
 
     //crea encabezado del csv
     const csvHeader = [
@@ -223,7 +224,7 @@ eventRouter.get("/:eventId/export", async (req, res) => {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-_]/g, "");
 
-      //forzar descarga
+    //forzar descarga
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
@@ -231,8 +232,8 @@ eventRouter.get("/:eventId/export", async (req, res) => {
     );
 
     return res.status(200).send(csv);
-  }catch(error) {
-    console.error(error)
-    return res.status(500).json({ message: "Failed to export event results"})
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to export event results" });
   }
-})
+});

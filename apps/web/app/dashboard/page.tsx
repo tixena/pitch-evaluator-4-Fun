@@ -15,61 +15,6 @@ import { useEvents, usePitches, useRanking, usePitchQr } from "@/hooks/dashboard
 //helper
 import { exportEvent, exportPitch } from "@/lib/dashboard-api";
 
-// const stats = [
-//   { label: "Pitches activos", value: "12", accent: "text-white" },
-//   { label: "Votos recibidos", value: "347", accent: "text-lime-300" },
-//   { label: "Puntuacion media", value: "4.2", accent: "text-cyan-400" },
-//   { label: "Evaluadores", value: "89", accent: "text-fuchsia-400" },
-// ] as const;
-
-// const ranking = [
-//   {
-//     position: "01",
-//     name: "EcoTrack AI",
-//     innovation: "4.8",
-//     viability: "4.5",
-//     impact: "4.9",
-//     presentation: "4.8",
-//     total: "4.70",
-//   },
-//   {
-//     position: "02",
-//     name: "FieldLynx",
-//     innovation: "4.3",
-//     viability: "4.6",
-//     impact: "4.2",
-//     presentation: "4.4",
-//     total: "4.36",
-//   },
-//   {
-//     position: "03",
-//     name: "MediConnect",
-//     innovation: "4.1",
-//     viability: "4.0",
-//     impact: "4.5",
-//     presentation: "3.9",
-//     total: "4.13",
-//   },
-//   {
-//     position: "04",
-//     name: "AgriVolt",
-//     innovation: "3.8",
-//     viability: "4.2",
-//     impact: "3.7",
-//     presentation: "4.1",
-//     total: "3.95",
-//   },
-//   {
-//     position: "05",
-//     name: "SafeRoute",
-//     innovation: "3.6",
-//     viability: "3.9",
-//     impact: "4.0",
-//     presentation: "3.8",
-//     total: "3.78",
-//   },
-// ] as const;
-
 const summaryBlocks = [
   {
     tone: "positive",
@@ -85,27 +30,21 @@ const summaryBlocks = [
 
 
 
-function FakeQr() {
-  const cells = [
-    1, 1, 1, 0, 1, 1, 1,
-    1, 0, 1, 0, 1, 0, 1,
-    1, 1, 1, 0, 1, 1, 1,
-    0, 0, 0, 0, 0, 0, 0,
-    1, 1, 0, 1, 0, 1, 1,
-    1, 0, 1, 1, 1, 0, 1,
-    1, 1, 1, 0, 1, 1, 1,
-  ];
+function QrDisplay({ url }: { url?: string }) {
+  if (!url) {
+    return (
+      <div className="flex h-[118px] w-[118px] items-center justify-center rounded-2xl bg-[#22222f] text-xs text-[#55556a]">
+        Sin pitch
+      </div>
+    );
+  }
+
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=150x150&margin=4`;
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((cell, index) => (
-          <div
-            key={index}
-            className={cell ? "h-3 w-3 rounded-[2px] bg-[#0a0a0f]" : "h-3 w-3"}
-          />
-        ))}
-      </div>
+    <div className="rounded-2xl bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={qrImageUrl} alt="QR de votacion" width={118} height={118} />
     </div>
   );
 }
@@ -122,6 +61,8 @@ export default function DashboardPage() {
 
   const { data: rankingData = [] } = useRanking(selectedEventId);
   const { data: qrData } = usePitchQr(selectedPitchId);
+
+  const selectedPitchVotes = rankingData.find(item => item.id === selectedPitchId)?.votesCount ?? 0;
 
   async function handlerExportEvent() {
     if(!selectedEventId) return;
@@ -273,7 +214,7 @@ export default function DashboardPage() {
                   <tbody>
                     {rankingData.map((item, index) => (
                       <tr
-                        key={item.name}
+                        key={item.id}
                         className="border-b border-[#20202d] text-sm text-[#d7d8e5] last:border-b-0"
                       >
                         <td className="px-4 py-4 font-mono text-xs text-[#8c8da4]">
@@ -319,7 +260,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-5 flex justify-center">
-                <FakeQr />
+                <QrDisplay url={qrData?.publicVoteUrl} />
               </div>
 
               <p className="mt-4 text-center text-xs text-[#7f8099]">
@@ -329,7 +270,7 @@ export default function DashboardPage() {
               <div className="mt-4 rounded-lg bg-[#202726] px-4 py-3">
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-2xl font-semibold text-[#ccff00]">29</p>
+                    <p className="text-2xl font-semibold text-[#ccff00]">{selectedPitchVotes}</p>
                     <p className="text-xs text-[#97a093]">votos recibidos</p>
                   </div>
                   {/*boton descarga los datos del pitch */}
@@ -343,8 +284,10 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-4 flex items-center justify-end gap-2 text-[#7f8099]">
-                <button className="rounded-lg border border-[#2a2a3a] p-2 transition hover:bg-[#212130]"
+                <button
+                  className="rounded-lg border border-[#2a2a3a] p-2 transition hover:bg-[#212130] disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={handlerExportEvent}
+                  disabled={!selectedEventId}
                 >
                   <ArrowUpRight className="size-4" />
                 </button>
